@@ -1,5 +1,6 @@
 #include "loginProject/system.h"
 
+#include <chrono>
 #include <iostream>
 
 namespace Login {
@@ -25,7 +26,19 @@ namespace Login {
             auto username_iterator = std::find_if(users.begin(), users.end(), user_match);
             auto password_iterator = std::find_if(users.begin(), users.end(), pass_match);
 
+            if (username_iterator != users.end()) {
+                if ((*username_iterator)->get_no_of_attempts() == 3) {
+                    auto end = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> seconds = end - (*username_iterator)->get_start();
+                    if (seconds.count() < 60) {
+                        std::cout << "You are locked out of your account for " << 60 - (int)seconds.count() << " seconds\n";
+                        continue;
+                    }
+                }
+            }
+
             if (username_iterator == password_iterator && username_iterator != users.end()) {
+                (*username_iterator)->set_no_of_attempts(0);
                 bool logged_in = true;
                 while (logged_in) {
                     display(*username_iterator);
@@ -46,6 +59,13 @@ namespace Login {
                 break;
             } else {
                 std::cout << "Username or Password is incorrect.\n";
+                if (username_iterator != users.end()) {
+                    (*username_iterator)->operator++();
+                    std::cout << "Attempt: " << (*username_iterator)->get_no_of_attempts() << '\n';
+                    if ((*username_iterator)->get_no_of_attempts() == 3) {
+                        (*username_iterator)->set_start(std::chrono::steady_clock::now());
+                    }
+                }
                 std::cout << "Please try again.\n";
             }
         }
@@ -75,6 +95,7 @@ namespace Login {
             int input;
             std::cout << "Press 1 to display users\n";
             std::cout << "Press 2 to delete user\n";
+            std::cout << "Press 3 to unlock user\n";
             std::cout << "Press 0 to log out\n";
             std::cin >> input;
             switch (input) {
@@ -89,6 +110,16 @@ namespace Login {
                         std::cout << "Enter the username of the user you would like to delete: ";
                         std::cin >> username_delete;
                         choose_username = deleteUser(username_delete);
+                    }
+                    break;
+                }
+                case 3: {
+                    bool choose_username = true;
+                    while (choose_username) {
+                        std::string username_unlock;
+                        std::cout << "Enter the username of the user you would like to unlock: ";
+                        std::cin >> username_unlock;
+                        choose_username = unlockUser(username_unlock);
                     }
                     break;
                 }
@@ -113,6 +144,17 @@ namespace Login {
         auto username_iterator = std::find_if(users.begin(), users.end(), user_match);
         if (username_iterator != users.end()) {
             users.erase(username_iterator);
+            return false;
+        }
+        std::cout << "Not a valid username\n";
+        return true;
+    }
+
+    bool System::unlockUser(std::string username) {
+        auto user_match = [&](std::shared_ptr<User> user) { return username == user->get_username(); };
+        auto username_iterator = std::find_if(users.begin(), users.end(), user_match);
+        if (username_iterator != users.end()) {
+            (*username_iterator)->set_no_of_attempts(0);
             return false;
         }
         std::cout << "Not a valid username\n";

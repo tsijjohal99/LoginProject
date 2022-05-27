@@ -19,5 +19,6 @@ namespace Login {
         void adminMenu(std::shared_ptr<Login::User> user);
         void displayUsers();
         bool deleteUser(std::string username);
+        bool unlockUser(std::string username);
     };
 }  // namespace Login
