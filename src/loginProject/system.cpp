@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <iostream>
+#include <string>
+#include <unordered_map>
 
 namespace Login {
     System::System() {
@@ -14,20 +16,20 @@ namespace Login {
             std::string username, password;
             std::cout << "Please enter a username: ";
             std::cin >> username;
-            std::cout << '\n';
+            // std::cout << '\n';
 
             std::cout << "Please enter a password: ";
             std::cin >> password;
-            std::cout << '\n';
+            // std::cout << '\n';
 
             auto user_match = [&](std::shared_ptr<User> user) { return username == user->get_username(); };
-            auto pass_match = [&](std::shared_ptr<User> user) { return password == user->get_password(); };
+            auto pass_match = [&](std::shared_ptr<User> user) { return std::hash<std::string>{}(password) == user->get_password_hash(); };
 
             auto username_iterator = std::find_if(users.begin(), users.end(), user_match);
             auto password_iterator = std::find_if(users.begin(), users.end(), pass_match);
 
             if (username_iterator != users.end()) {
-                if ((*username_iterator)->get_no_of_attempts() == 3) {
+                if ((*username_iterator)->get_no_of_attempts() >= 3) {
                     auto end = std::chrono::steady_clock::now();
                     std::chrono::duration<double> seconds = end - (*username_iterator)->get_start();
                     if (seconds.count() < 60) {
@@ -44,13 +46,17 @@ namespace Login {
                     display(*username_iterator);
                     if (ifAdmin(*username_iterator))
                         adminMenu(*username_iterator);
-                    std::cout << "Would you like to log out?\n";
-                    std::cout << "Press Y to logout or any other key to stay logged in\n";
+                    std::cout << "Press 1 to change password\n";
+                    std::cout << "Press 0 to logout\n";
+                    std::cout << "Press any other key to stay logged in\n";
                     char logout;
                     std::cin >> logout;
                     switch (logout) {
-                        case 'y':
-                        case 'Y': {
+                        case '1': {
+                            changePassword(*username_iterator);
+                            break;
+                        }
+                        case '0': {
                             logged_in = false;
                             break;
                         }
@@ -62,7 +68,7 @@ namespace Login {
                 if (username_iterator != users.end()) {
                     (*username_iterator)->operator++();
                     std::cout << "Attempt: " << (*username_iterator)->get_no_of_attempts() << '\n';
-                    if ((*username_iterator)->get_no_of_attempts() == 3) {
+                    if ((*username_iterator)->get_no_of_attempts() >= 3) {
                         (*username_iterator)->set_start(std::chrono::steady_clock::now());
                     }
                 }
@@ -159,5 +165,28 @@ namespace Login {
         }
         std::cout << "Not a valid username\n";
         return true;
+    }
+
+    void System::changePassword(std::shared_ptr<Login::User> user) {
+        while (true) {
+            std::string password;
+            std::cout << "Enter a new password: ";
+            std::cin >> password;
+            std::size_t password_hash = std::hash<std::string>{}(password);
+
+            auto old_passwords = user->get_old_passwords();
+            auto pass_match = [&](std::size_t old_password) { return password_hash == old_password; };
+            auto password_iterator = std::find_if(old_passwords.begin(), old_passwords.end(), pass_match);
+
+            if (password_iterator != old_passwords.end()) {
+                system("cls");
+                std::cout << "You've already used that password\n";
+            } else {
+                user->add_old_password(password_hash);
+                user->set_password_hash(password_hash);
+                std::cout << "You're password has been changed\n";
+                break;
+            }
+        }
     }
 }  // namespace Login
