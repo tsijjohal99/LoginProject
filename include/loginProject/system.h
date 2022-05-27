@@ -14,5 +14,10 @@ namespace Login {
         System();
         void login();
         void display(std::shared_ptr<Login::User> user);
+        void addUser();
+        bool ifAdmin(std::shared_ptr<Login::User> user);
+        void adminMenu(std::shared_ptr<Login::User> user);
+        void displayUsers();
+        bool deleteUser(std::string username);
     };
 }  // namespace Login
